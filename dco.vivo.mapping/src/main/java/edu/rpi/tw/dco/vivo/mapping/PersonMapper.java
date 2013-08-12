@@ -6,6 +6,7 @@ import java.sql.*;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import org.openrdf.model.BNode;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ValueFactoryImpl;
@@ -98,9 +99,25 @@ public class PersonMapper {
     	   rset11.close();
     	   
     	   ResultSet rset12 = executeQuery(conn, "select value from profile_values where fid=29 and uid= " + uid);
-    	   mapMailingAddress(rset12, rdf, self);
+    	   ResultSet rset13 = executeQuery(conn, "select value from profile_values where fid=30 and uid= " + uid);
+    	   ResultSet rset14 = executeQuery(conn, "select value from profile_values where fid=31 and uid= " + uid);
+    	   ResultSet rset15 = executeQuery(conn, "select value from profile_values where fid=32 and uid= " + uid);
+    	   ResultSet rset16 = executeQuery(conn, "select value from profile_values where fid=34 and uid= " + uid);
+    	   ResultSet rset17 = executeQuery(conn, "select value from profile_values where fid=51 and uid= " + uid);
+    	   ResultSet rset18 = executeQuery(conn, "select value from profile_values where fid=49 and uid= " + uid);
+    	   mapMailingAddress(rset12, rset13, rset14, rset15, rset16, rset17, rset18, rdf, self);
     	   rset12.close();
-    	  
+    	   rset13.close();
+    	   rset14.close();
+    	   rset15.close();
+    	   rset16.close();
+    	   rset17.close();
+    	   rset18.close();
+    	   
+    	   ResultSet rset19 = executeQuery(conn, "select value from profile_values where fid=44 and uid= " + uid);
+    	   mapHomeCountry(rset19, rdf, self);
+    	   rset19.close();
+
         }
         rset.close();
         
@@ -122,10 +139,74 @@ public class PersonMapper {
         }
 	}
 	
+	private void mapHomeCountry(final ResultSet rset19,
+			final Collection<org.openrdf.model.Statement> rdf, final URI self) throws SQLException {
+		if(rset19.next()){
+			String nationality = rset19.getString("value");
+			if(nationality.length()!=0){
+				rdf.add(VF.createStatement(self, GEO.HAS_NATIONALITY, VF.createLiteral(nationality)));	
+			}
+		}
+	}
+
 	private void mapMailingAddress(final ResultSet rset12,
-			final Collection<org.openrdf.model.Statement> rdf, final URI self) {
-		// TODO Auto-generated method stub
+			ResultSet rset13, ResultSet rset14, ResultSet rset15, ResultSet rset16, ResultSet rset17, ResultSet rset18, final Collection<org.openrdf.model.Statement> rdf, final URI self) throws SQLException {
+		BNode bn = VF.createBNode();
+		rdf.add(VF.createStatement(bn, RDF.TYPE, VIVO_CORE.ADDRESS));	
 		
+		if(rset12.next()){
+			String addressLine1 = rset12.getString("value");
+			if(addressLine1.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_1, VF.createLiteral(addressLine1)));	
+			}
+		}
+		
+		if(rset13.next()){
+			String addressLine2 = rset13.getString("value");
+			if(addressLine2.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_2, VF.createLiteral(addressLine2)));	
+			}
+		}
+
+		
+		if(rset14.next()){
+			String addressLine3 = rset14.getString("value");
+			if(addressLine3.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_3, VF.createLiteral(addressLine3)));	
+			}
+		}
+			
+		
+		if(rset15.next()){
+			String addressCity = rset15.getString("value");
+			if(addressCity.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_CITY, VF.createLiteral(addressCity)));	
+			}
+		}
+		
+		if(rset16.next()){
+			String addressPostalCode = rset16.getString("value");
+			if(addressPostalCode.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_POSTAL_CODE, VF.createLiteral(addressPostalCode)));	
+			}
+		}
+		
+		if(rset17.next()){
+			String addressState = rset17.getString("value");
+			if(addressState.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_STATE, VF.createLiteral(addressState)));	
+			}
+		}
+		
+		if(rset18.next()){
+			String addressCountry = rset18.getString("value");
+			if(addressCountry.length()!=0){
+				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_COUNTRY, VF.createLiteral(addressCountry)));	
+			}
+		}
+		
+		rdf.add(VF.createStatement(self, VIVO_CORE.MAILING_ADDRESS, bn));	
+
 	}
 
 	private void mapPersonalURL(final ResultSet rset11,
@@ -200,6 +281,8 @@ public class PersonMapper {
 			ResultSet rset6 = executeQuery(conn, "select value from profile_values where fid=14 and uid= " + uid);
 			mapOrganizationURL(rset6, rdf, org);
 	    	rset6.close();
+	    	
+	    	//add organization country
 
 		}				
 	}
