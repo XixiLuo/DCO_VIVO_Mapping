@@ -8,6 +8,14 @@ public interface VIVO_CORE {
 	static String NS = "http://vivoweb.org/ontology/core#";
 
     static URI
+    	ROLE_OF = new URIImpl(NS + "roleOf"),
+    	HAS_ROLE = new URIImpl(NS + "hasRole"),
+    	ROLE_ID_ROOT = new URIImpl(NS + "Role/"),
+    	ROLE = new URIImpl(NS + "Role"),
+    	HAS_CURRENT_MEMBER = new URIImpl(NS + "hasCurrentMember"),
+    	CURRENTLY_HEADED_BY = new URIImpl(NS + "currentlyHeadedBy"),
+    	CURRENTLY_MEMBER_OF = new URIImpl(NS + "currentMemberOf"),
+    	CURRENTLY_HEAD_OF = new URIImpl(NS + "currentlyHeadOf"),
     	HOME_COUNTRY = new URIImpl(NS + "Country"), 
     	ADDRESS_STATE = new URIImpl(NS + "addressState"),
     	ADDRESS_COUNTRY = new URIImpl(NS + "addressCountry"),
