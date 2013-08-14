@@ -3,15 +3,27 @@ package edu.rpi.tw.dco.vivo.mapping;
 import org.openrdf.model.URI;
 import org.openrdf.model.impl.URIImpl;
 
-public interface VIVO_CORE {
+public interface VIVO {
 
 	static String NS = "http://vivoweb.org/ontology/core#";
 
     static URI
+    	LINK_ANCHOR_TEXT = new URIImpl(NS + "linkAnchorText"),
+    	LINK_URI = new URIImpl(NS + "linkURI"),
+    	WEB_PAGE_OF = new URIImpl(NS + "webpageOf"),
+    	WEB_PAGE = new URIImpl(NS + "webpage"),
+
+    
+    	ASSOCIATED_ROLE = new URIImpl(NS + "associatedRole"),
+    	POSITION_IN_ORGANIZATION = new URIImpl(NS + "positionInOrganization"),
+    	POSITION_FOR_PERSON = new URIImpl(NS + "positionForPerson"),
+    	POSITION = new URIImpl(NS + "Position"),
+    	
+    	PREFERRED_TITLE = new URIImpl(NS + "preferredTitle"),
     	ROLE_OF = new URIImpl(NS + "roleOf"),
     	HAS_ROLE = new URIImpl(NS + "hasRole"),
-    	ROLE_ID_ROOT = new URIImpl(NS + "Role/"),
     	ROLE = new URIImpl(NS + "Role"),
+    	
     	HAS_CURRENT_MEMBER = new URIImpl(NS + "hasCurrentMember"),
     	CURRENTLY_HEADED_BY = new URIImpl(NS + "currentlyHeadedBy"),
     	CURRENTLY_MEMBER_OF = new URIImpl(NS + "currentMemberOf"),
@@ -29,7 +41,6 @@ public interface VIVO_CORE {
     	FAX_NUMBER = new URIImpl(NS + "faxNumber"),
     	PHONE_NUMBER = new URIImpl(NS + "phoneNumber"),
     	URL_LINK = new URIImpl(NS + "URLLink"),
-    	WEB_PAGE = new URIImpl(NS + "webpage"),
 		CURRENT_MEMBER_OF = new URIImpl(NS + "currentMemberOf"),
     	EMAIL = new URIImpl(NS + "email");
 }

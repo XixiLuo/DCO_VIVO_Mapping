@@ -8,7 +8,6 @@ public interface FOAF {
 
     static URI
     	SKYPE_ID = new URIImpl(NS + "skypeID"),
-    	ORGANIZATION_ID_ROOT = new URIImpl(NS + "Organization/"),
     	ORGANIZATION = new URIImpl(NS + "Organization"),
     	LAST_NAME = new URIImpl(NS + "lastName"),
 		FIRST_NAME = new URIImpl(NS + "firstName"),

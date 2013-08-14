@@ -7,18 +7,21 @@ import java.sql.*;
 import java.util.Collection;
 import java.util.LinkedList;
 
-import org.openrdf.model.BNode;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFWriter;
 import org.openrdf.rio.Rio;
 
 public class PersonMapper {
 	private static final String NS = "http://tw.rpi.edu/dco-vivo/",
-			PERSON_ID_ROOT = NS + "person/";
+			MAILING_ID_ROOT = NS + "mailadd/", WEBPAGE_ID_ROOT = NS
+					+ "webpage/", ROLE_ID_ROOT = NS + "role/",
+			POSITION_ID_ROOT = NS + "position/", ORGANIZATION_ID_ROOT = NS
+					+ "organization/", PERSON_ID_ROOT = NS + "person/";
 
 	private static final ValueFactory VF = new ValueFactoryImpl();
 
@@ -54,8 +57,15 @@ public class PersonMapper {
 
 		// System.out.println("The records selected are:");
 		// int rowCount = 0;
+		//int i = 1;
 		while (rset.next()) {
 			Integer uid = rset.getInt("uid");
+			String uFirstName = null;
+			String uLastName = null;
+
+			if (uid == 0)
+				continue;
+
 			URI self = VF.createURI(PERSON_ID_ROOT + uid);
 
 			// each user is an instance of FOAF:Person
@@ -67,14 +77,17 @@ public class PersonMapper {
 			ResultSet rset2 = executeQuery(conn,
 					"select value from profile_values where fid=1 and uid= "
 							+ uid);
-			mapFirstName(rset2, rdf, self);
+			uFirstName = mapFirstName(rset2, rdf, self);
 			rset2.close();
 
 			ResultSet rset3 = executeQuery(conn,
 					"select value from profile_values where fid=2 and uid= "
 							+ uid);
-			mapLastName(rset3, rdf, self);
+			uLastName = mapLastName(rset3, rdf, self);
 			rset3.close();
+
+			rdf.add(VF.createStatement(self, RDFS.LABEL,
+					VF.createLiteral(uLastName + ", " + uFirstName)));
 
 			ResultSet rset4 = executeQuery(conn,
 					"select value from profile_values where fid=9 and uid= "
@@ -83,8 +96,7 @@ public class PersonMapper {
 			rset4.close();
 
 			ResultSet rset5 = executeQuery(conn,
-					"select value from profile_values where fid=10 and uid= "
-							+ uid);
+					"select * from profile_values where fid=10 and uid= " + uid);
 			mapOrganization(rset5, rdf, self, conn, uid);
 			rset5.close();
 
@@ -157,18 +169,22 @@ public class PersonMapper {
 
 			ResultSet rset20 = executeQuery(conn,
 					"select tid from term_user where uid= " + uid);
-			mapHomeAffiliationRole(rset20, rdf, self, conn);
+			mapAffiliationRole(rset20, rdf, self, conn, uid);
 			rset20.close();
 
-			//System.out.println();// Echo For debugging
-			System.out.println("The uid is: " + uid);// Echo For debugging
+			// System.out.println();// Echo For debugging
+			// System.out.println("The uid is: " + uid);// Echo For debugging
+
+			// if (++i > 10) break;
+
 		}
 		rset.close();
 
 		System.out.println("generated RDF statements:");
-		
-		for (org.openrdf.model.Statement st : rdf) { System.out.println("\t" + st); }
-		
+
+		for (org.openrdf.model.Statement st : rdf) {
+			System.out.println("\t" + st);
+		}
 
 		OutputStream out = new FileOutputStream(file);
 		try {
@@ -183,9 +199,9 @@ public class PersonMapper {
 		}
 	}
 
-	private void mapHomeAffiliationRole(final ResultSet rset20,
+	private void mapAffiliationRole(final ResultSet rset20,
 			final Collection<org.openrdf.model.Statement> rdf, final URI self,
-			final Connection conn) throws SQLException {
+			final Connection conn, Integer uid) throws SQLException {
 		/*
 		 * while(rset20.next()) { Integer tid = rset20.getInt("tid"); ResultSet
 		 * rset21 = executeQuery(conn, "select * from term_data where tid= " +
@@ -214,7 +230,7 @@ public class PersonMapper {
 			String tName = null;
 			if (rset21.next()) {
 				tName = rset21.getString("name");
-				String description = rset21.getString("description");
+				String tDescription = rset21.getString("description");
 			}
 
 			ResultSet rset22 = executeQuery(conn,
@@ -227,56 +243,61 @@ public class PersonMapper {
 					if (rset23.next()) {
 						String pName = rset23.getString("name");
 
-						String description = rset23.getString("description");
+						String pDescription = rset23.getString("description");
 
-						URI role = VF.createURI(VIVO_CORE.ROLE_ID_ROOT + tName);
-						org.openrdf.model.Statement e = VF.createStatement(
-								role, RDF.TYPE, VIVO_CORE.ROLE);
-						if (!rdf.contains(e)) {
-							rdf.add(e);
-						}
+						URI role = addNewRole(tName, rdf);
 
-						URI org = VF.createURI(FOAF.ORGANIZATION_ID_ROOT
-								+ pName);
-						org.openrdf.model.Statement eo = VF.createStatement(
-								org, RDF.TYPE, FOAF.ORGANIZATION);
-						if (!rdf.contains(eo)) {
-							rdf.add(eo);
-						}
+						URI org = addNewOrganization(pName, rdf);
 
 						org.openrdf.model.Statement euo = VF.createStatement(
-								self, VIVO_CORE.CURRENT_MEMBER_OF, org);
+								self, VIVO.CURRENT_MEMBER_OF, org);
 						if (!rdf.contains(euo)) {
 							rdf.add(euo);
 						}
 
 						org.openrdf.model.Statement eou = VF.createStatement(
-								org, VIVO_CORE.HAS_CURRENT_MEMBER, self);
+								org, VIVO.HAS_CURRENT_MEMBER, self);
 						if (!rdf.contains(eou)) {
 							rdf.add(eou);
 						}
 
 						org.openrdf.model.Statement eor = VF.createStatement(
-								org, VIVO_CORE.HAS_ROLE, role);
+								org, VIVO.HAS_ROLE, role);
 						if (!rdf.contains(eor)) {
 							rdf.add(eor);
 						}
 
 						org.openrdf.model.Statement ero = VF.createStatement(
-								role, VIVO_CORE.ROLE_OF, org);
+								role, VIVO.ROLE_OF, org);
 						if (!rdf.contains(ero)) {
 							rdf.add(ero);
+						}
+
+						// ------------------
+						URI position = addNewPosition(tName, rdf);
+
+						org.openrdf.model.Statement e2 = VF.createStatement(
+								position, VIVO.POSITION_FOR_PERSON, self);
+						if (!rdf.contains(e2)) {
+							rdf.add(e2);
+						}
+
+						org.openrdf.model.Statement e3 = VF.createStatement(
+								position, VIVO.POSITION_IN_ORGANIZATION, org);
+						if (!rdf.contains(e3)) {
+							rdf.add(e3);
+						}
+
+						org.openrdf.model.Statement e4 = VF.createStatement(
+								position, VIVO.ASSOCIATED_ROLE, role);
+						if (!rdf.contains(e4)) {
+							rdf.add(e4);
 						}
 
 					}
 					rset23.close();
 				} else {
-					URI org = VF.createURI(FOAF.ORGANIZATION_ID_ROOT + tName);
-					org.openrdf.model.Statement e = VF.createStatement(org,
-							RDF.TYPE, FOAF.ORGANIZATION);
-					if (!rdf.contains(e)) {
-						rdf.add(e);
-					}
+					addNewOrganization(tName, rdf);
 				}
 			}
 			rset21.close();
@@ -301,67 +322,112 @@ public class PersonMapper {
 			ResultSet rset17, ResultSet rset18,
 			final Collection<org.openrdf.model.Statement> rdf, final URI self)
 			throws SQLException {
-		BNode bn = VF.createBNode();
-		rdf.add(VF.createStatement(bn, RDF.TYPE, VIVO_CORE.ADDRESS));
 
-		if (rset12.next()) {
-			String addressLine1 = rset12.getString("value");
+		String addressLine1 = null;
+		String addressLine2 = null;
+		String addressLine3 = null;
+		String addressCity = null;
+		String addressPostalCode = null;
+		String addressState = null;
+		String addressCountry = null;
+
+		if (rset12.next())
+			addressLine1 = rset12.getString("value");
+
+		if (rset13.next())
+			addressLine2 = rset13.getString("value");
+
+		if (rset14.next())
+			addressLine3 = rset14.getString("value");
+
+		if (rset15.next())
+			addressCity = rset15.getString("value");
+
+		if (rset16.next())
+			addressPostalCode = rset16.getString("value");
+
+		if (rset17.next())
+			addressState = rset17.getString("value");
+
+		if (rset18.next())
+			addressCountry = rset18.getString("value");
+
+		String addressL = addressLine1 + addressCity + addressState;
+
+		URI mailAdd = addNewMailingAddress(rdf, addressL);
+
+		boolean on = false;
+
+		if (addressLine1 != null) {
 			if (addressLine1.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_1,
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_LINE_1,
 						VF.createLiteral(addressLine1)));
+				on = true;
 			}
 		}
 
-		if (rset13.next()) {
-			String addressLine2 = rset13.getString("value");
+		if (addressLine2 != null) {
 			if (addressLine2.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_2,
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_LINE_2,
 						VF.createLiteral(addressLine2)));
+				on = true;
 			}
 		}
 
-		if (rset14.next()) {
-			String addressLine3 = rset14.getString("value");
+		if (addressLine3 != null) {
 			if (addressLine3.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_LINE_3,
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_LINE_3,
 						VF.createLiteral(addressLine3)));
+				on = true;
 			}
 		}
 
-		if (rset15.next()) {
-			String addressCity = rset15.getString("value");
+		if (addressCity != null) {
 			if (addressCity.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_CITY,
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_CITY,
 						VF.createLiteral(addressCity)));
+				on = true;
 			}
 		}
 
-		if (rset16.next()) {
-			String addressPostalCode = rset16.getString("value");
-			if (addressPostalCode.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_POSTAL_CODE,
+		if (addressPostalCode != null) {
+			if (addressPostalCode.length() != 0)
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_POSTAL_CODE,
 						VF.createLiteral(addressPostalCode)));
-			}
 		}
 
-		if (rset17.next()) {
-			String addressState = rset17.getString("value");
-			if (addressState.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_STATE,
+		if (addressState != null) {
+			if (addressState.length() != 0)
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_STATE,
 						VF.createLiteral(addressState)));
-			}
+
 		}
 
-		if (rset18.next()) {
-			String addressCountry = rset18.getString("value");
-			if (addressCountry.length() != 0) {
-				rdf.add(VF.createStatement(bn, VIVO_CORE.ADDRESS_COUNTRY,
+		if (addressCountry != null) {
+			if (addressCountry.length() != 0)
+				rdf.add(VF.createStatement(mailAdd, VIVO.ADDRESS_COUNTRY,
 						VF.createLiteral(addressCountry)));
-			}
 		}
 
-		rdf.add(VF.createStatement(self, VIVO_CORE.MAILING_ADDRESS, bn));
+		if (on)
+			rdf.add(VF.createStatement(self, VIVO.MAILING_ADDRESS, mailAdd));
 
+	}
+
+	private URI addNewMailingAddress(
+			Collection<org.openrdf.model.Statement> rdf, String addressL) {
+		URI mailadd = VF.createURI(MAILING_ID_ROOT + addressL.hashCode());
+		org.openrdf.model.Statement e = VF.createStatement(mailadd, RDF.TYPE,
+				VIVO.ADDRESS);
+
+		// check redundancy
+		if (!rdf.contains(e)) {
+			rdf.add(e);
+			rdf.add(VF.createStatement(mailadd, RDFS.LABEL,
+					VF.createLiteral(addressL)));
+		}
+
+		return mailadd;
 	}
 
 	private void mapPersonalURL(final ResultSet rset11,
@@ -373,15 +439,28 @@ public class PersonMapper {
 			if (url.indexOf(':') < 0)
 				return;
 
-			URI personalURL = VF.createURI(url);
-			org.openrdf.model.Statement e = VF.createStatement(personalURL,
-					RDF.TYPE, VIVO_CORE.URL_LINK);
-			if (!rdf.contains(e)) {
-				rdf.add(e);
-			}
+			URI webpage = addNewWebPage(rdf, url);
 
-			rdf.add(VF.createStatement(self, VIVO_CORE.WEB_PAGE, personalURL));
+			rdf.add(VF.createStatement(self, VIVO.WEB_PAGE, webpage));
+			rdf.add(VF.createStatement(webpage, VIVO.WEB_PAGE_OF, self));
+			rdf.add(VF.createStatement(webpage, VIVO.LINK_ANCHOR_TEXT,
+					VF.createLiteral(url)));
+			rdf.add(VF.createStatement(webpage, VIVO.LINK_URI,
+					VF.createLiteral(url)));
 		}
+	}
+
+	private URI addNewWebPage(Collection<org.openrdf.model.Statement> rdf,
+			String url) {
+		URI webpage = VF.createURI(WEBPAGE_ID_ROOT + url.hashCode());
+		org.openrdf.model.Statement e = VF.createStatement(webpage, RDF.TYPE,
+				VIVO.URL_LINK);
+		if (!rdf.contains(e)) {
+			rdf.add(e);
+			rdf.add(VF.createStatement(webpage, RDFS.LABEL,
+					VF.createLiteral(url)));
+		}
+		return webpage;
 	}
 
 	private void mapLanguage(final ResultSet rset10,
@@ -396,7 +475,7 @@ public class PersonMapper {
 		if (rset9.next()) {
 			String faxNumber = rset9.getString("value");
 			if (!faxNumber.isEmpty()) {
-				rdf.add(VF.createStatement(self, VIVO_CORE.FAX_NUMBER,
+				rdf.add(VF.createStatement(self, VIVO.FAX_NUMBER,
 						VF.createLiteral(faxNumber)));
 			}
 		}
@@ -408,7 +487,7 @@ public class PersonMapper {
 		if (rset8.next()) {
 			String phoneNumber = rset8.getString("value");
 			if (!phoneNumber.isEmpty()) {
-				rdf.add(VF.createStatement(self, VIVO_CORE.PHONE_NUMBER,
+				rdf.add(VF.createStatement(self, VIVO.PHONE_NUMBER,
 						VF.createLiteral(phoneNumber)));
 			}
 		}
@@ -430,17 +509,16 @@ public class PersonMapper {
 			final Collection<org.openrdf.model.Statement> rdf, final URI self,
 			Connection conn, Integer uid) throws SQLException {
 		if (rset5.next()) {
-			String Organization = rset5.getString("value");
+			String organization = rset5.getString("value");
+			Integer fid = rset5.getInt("fid");
 
 			// add organizations. to do: need to check!
-			URI org = VF.createURI(FOAF.ORGANIZATION_ID_ROOT + Organization);
-			org.openrdf.model.Statement e = VF.createStatement(org, RDF.TYPE,
-					FOAF.ORGANIZATION);
-			if (!rdf.contains(e)) {
-				rdf.add(e);
-			}
 
-			rdf.add(VF.createStatement(self, VIVO_CORE.CURRENT_MEMBER_OF, org));
+			// create an new organization
+
+			URI org = addNewOrganization(organization, rdf);
+
+			rdf.add(VF.createStatement(self, VIVO.CURRENT_MEMBER_OF, org));
 
 			// add organization url
 			ResultSet rset6 = executeQuery(conn,
@@ -454,23 +532,73 @@ public class PersonMapper {
 		}
 	}
 
+	private URI addNewOrganization(String sOrganization,
+			Collection<org.openrdf.model.Statement> rdf) {
+		// URI org = VF.createURI(ORGANIZATION_ID_ROOT + uid + "-" + fid);
+		URI org = VF.createURI(ORGANIZATION_ID_ROOT + sOrganization.hashCode());
+		org.openrdf.model.Statement e = VF.createStatement(org, RDF.TYPE,
+				FOAF.ORGANIZATION);
+		org.openrdf.model.Statement e1 = VF.createStatement(org, RDFS.LABEL,
+				VF.createLiteral(sOrganization));
+
+		// check redundancy
+		if (!rdf.contains(e)) {
+			rdf.add(e);
+		}
+
+		if (!rdf.contains(e1)) {
+			rdf.add(e1);
+		}
+		return org;
+	}
+
+	private URI addNewRole(String sRole,
+			Collection<org.openrdf.model.Statement> rdf) {
+		// URI role = VF.createURI(ROLE_ID_ROOT + uid + "-" + tid);
+		URI role = VF.createURI(ROLE_ID_ROOT + sRole.hashCode());
+		org.openrdf.model.Statement e = VF.createStatement(role, RDF.TYPE,
+				VIVO.ROLE);
+
+		// check redundancy
+		if (!rdf.contains(e)) {
+			rdf.add(e);
+			rdf.add(VF.createStatement(role, RDFS.LABEL,
+					VF.createLiteral(sRole)));
+		}
+		return role;
+	}
+
+	private URI addNewPosition(String sPosition,
+			Collection<org.openrdf.model.Statement> rdf) {
+		// URI position = VF.createURI(POSITION_ID_ROOT + uid + "-" + tid);
+		URI position = VF.createURI(POSITION_ID_ROOT + sPosition.hashCode());
+		org.openrdf.model.Statement e1 = VF.createStatement(position, RDF.TYPE,
+				VIVO.POSITION);
+		if (!rdf.contains(e1)) {
+			rdf.add(e1);
+			rdf.add(VF.createStatement(position, RDFS.LABEL,
+					VF.createLiteral(sPosition)));
+		}
+		return position;
+	}
+
 	private void mapOrganizationURL(final ResultSet rset6,
 			final Collection<org.openrdf.model.Statement> rdf, final URI org)
 			throws SQLException {
 		if (rset6.next()) {
-			String url = rset6.getString("value");
+			String sUrl = rset6.getString("value");
 
-			if (url.indexOf(':') < 0)
+			if (sUrl.indexOf(':') < 0)
 				return;
 
-			URI orgURL = VF.createURI(url);
-			org.openrdf.model.Statement e = VF.createStatement(orgURL,
-					RDF.TYPE, VIVO_CORE.URL_LINK);
-			if (!rdf.contains(e)) {
-				rdf.add(e);
-			}
+			URI webpage = addNewWebPage(rdf, sUrl);
 
-			rdf.add(VF.createStatement(org, VIVO_CORE.WEB_PAGE, orgURL));
+			rdf.add(VF.createStatement(org, VIVO.WEB_PAGE, webpage));
+			rdf.add(VF.createStatement(webpage, VIVO.WEB_PAGE_OF, org));
+			rdf.add(VF.createStatement(webpage, VIVO.LINK_ANCHOR_TEXT,
+					VF.createLiteral(sUrl)));
+			rdf.add(VF.createStatement(webpage, VIVO.LINK_URI,
+					VF.createLiteral(sUrl)));
 		}
 	}
 
@@ -481,37 +609,42 @@ public class PersonMapper {
 			throws SQLException {
 		if (rset4.next()) {
 			String prefixName = rset4.getString("value");
-			rdf.add(VF.createStatement(self, BIBO.PREFIX_NAME,
-					VF.createLiteral(prefixName)));
+			if (prefixName.length() > 0) {
+				rdf.add(VF.createStatement(self, VIVO.PREFERRED_TITLE,
+						VF.createLiteral(prefixName)));
+			}
 		}
 	}
 
-	private void mapLastName(final ResultSet rset3,
+	private String mapLastName(final ResultSet rset3,
 			final Collection<org.openrdf.model.Statement> rdf, final URI self)
 			throws SQLException {
+		String lastName = null;
 		if (rset3.next()) {
-			String lastName = rset3.getString("value");
+			lastName = rset3.getString("value");
 			rdf.add(VF.createStatement(self, FOAF.LAST_NAME,
 					VF.createLiteral(lastName)));
 		}
+		return lastName;
 	}
 
-	private void mapFirstName(final ResultSet rset2,
+	private String mapFirstName(final ResultSet rset2,
 			final Collection<org.openrdf.model.Statement> rdf, final URI self)
 			throws SQLException {
+		String firstName = null;
 		if (rset2.next()) {
-			String firstName = rset2.getString("value");
+			firstName = rset2.getString("value");
 			rdf.add(VF.createStatement(self, FOAF.FIRST_NAME,
 					VF.createLiteral(firstName)));
 		}
+		return firstName;
 	}
 
 	private void mapEmail(final ResultSet rset,
 			final Collection<org.openrdf.model.Statement> rdf, final URI self)
 			throws SQLException {
 		String email = rset.getString("mail");
-		rdf.add(VF.createStatement(self, VIVO_CORE.EMAIL,
-				VF.createLiteral(email)));
+		rdf.add(VF.createStatement(self, VIVO.EMAIL, VF.createLiteral(email)));
 	}
 
 	private void mapName(final ResultSet rset,
@@ -519,6 +652,8 @@ public class PersonMapper {
 			throws SQLException {
 		String name = rset.getString("name");
 		rdf.add(VF.createStatement(self, FOAF.NICK, VF.createLiteral(name)));
+		// rdf.add(VF.createStatement(self, RDFS.LABEL,
+		// VF.createLiteral(name)));
 	}
 
 	private ResultSet executeQuery(Connection conn, String strSql)
@@ -526,10 +661,9 @@ public class PersonMapper {
 		Statement stmt = conn.createStatement();
 		ResultSet rset = stmt.executeQuery(strSql);
 
-		
-		 System.out.println("The SQL query is: " + strSql); 
-		 System.out.println();
-		 
+		System.out.println("The SQL query is: " + strSql);
+		System.out.println();
+
 		return rset;
 
 	}
