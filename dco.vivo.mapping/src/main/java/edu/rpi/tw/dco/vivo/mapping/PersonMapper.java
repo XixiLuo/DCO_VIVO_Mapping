@@ -171,11 +171,19 @@ public class PersonMapper {
 					"select tid from term_user where uid= " + uid);
 			mapAffiliationRole(rset20, rdf, self, conn, uid);
 			rset20.close();
+			
+			ResultSet rset21 = executeQuery(conn,
+					"select value from profile_values where fid=47 and uid= "
+							+ uid);
+			mapExpertise(rset21, rdf, self);
+			rset21.close();
 
 			// System.out.println();// Echo For debugging
 			// System.out.println("The uid is: " + uid);// Echo For debugging
 
 			// if (++i > 10) break;
+			
+			
 
 		}
 		rset.close();
@@ -196,6 +204,16 @@ public class PersonMapper {
 			w.endRDF();
 		} finally {
 			out.close();
+		}
+	}
+
+	private void mapExpertise(final ResultSet rset21,
+			final Collection<org.openrdf.model.Statement> rdf, final URI self) throws SQLException {
+		String overview = null;
+		if (rset21.next()) {
+			overview = rset21.getString("value");
+			rdf.add(VF.createStatement(self, VIVO.OVERVIEW,
+					VF.createLiteral(overview)));
 		}
 	}
 

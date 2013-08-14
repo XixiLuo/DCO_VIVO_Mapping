@@ -8,6 +8,7 @@ public interface VIVO {
 	static String NS = "http://vivoweb.org/ontology/core#";
 
     static URI
+    	OVERVIEW = new URIImpl(NS + "overview"),
     	LINK_ANCHOR_TEXT = new URIImpl(NS + "linkAnchorText"),
     	LINK_URI = new URIImpl(NS + "linkURI"),
     	WEB_PAGE_OF = new URIImpl(NS + "webpageOf"),
