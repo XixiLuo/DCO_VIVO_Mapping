@@ -70,6 +70,8 @@ public class PersonMapper {
 
 			// each user is an instance of FOAF:Person
 			rdf.add(VF.createStatement(self, RDF.TYPE, FOAF.PERSON));
+			addDOCId(self, rdf);
+
 
 			mapName(rset, rdf, self);
 			mapEmail(rset, rdf, self);
@@ -443,6 +445,7 @@ public class PersonMapper {
 			rdf.add(e);
 			rdf.add(VF.createStatement(mailadd, RDFS.LABEL,
 					VF.createLiteral(addressL)));
+			addDOCId(mailadd, rdf);
 		}
 
 		return mailadd;
@@ -477,8 +480,20 @@ public class PersonMapper {
 			rdf.add(e);
 			rdf.add(VF.createStatement(webpage, RDFS.LABEL,
 					VF.createLiteral(url)));
+			addDOCId(webpage, rdf);
 		}
 		return webpage;
+	}
+
+	private void addDOCId(URI url,
+			Collection<org.openrdf.model.Statement> rdf) {
+		DCOId di = new DCOId();
+		String s = url.toString();
+		di.generateDCOId(s);
+		String dcoId = di.getDCOId();
+		System.out.println("added an DCOId: " + dcoId);	
+		rdf.add(VF.createStatement(url, DCO.DCO_ID, 
+				VF.createLiteral(dcoId)));
 	}
 
 	private void mapLanguage(final ResultSet rset10,
@@ -562,10 +577,14 @@ public class PersonMapper {
 		// check redundancy
 		if (!rdf.contains(e)) {
 			rdf.add(e);
+			rdf.add(VF.createStatement(org, RDFS.LABEL,
+				VF.createLiteral(sOrganization)));
+			addDOCId(org, rdf);
 		}
 
 		if (!rdf.contains(e1)) {
 			rdf.add(e1);
+			addDOCId(org, rdf);
 		}
 		return org;
 	}
@@ -582,6 +601,7 @@ public class PersonMapper {
 			rdf.add(e);
 			rdf.add(VF.createStatement(role, RDFS.LABEL,
 					VF.createLiteral(sRole)));
+			addDOCId(role, rdf);
 		}
 		return role;
 	}
@@ -596,6 +616,7 @@ public class PersonMapper {
 			rdf.add(e1);
 			rdf.add(VF.createStatement(position, RDFS.LABEL,
 					VF.createLiteral(sPosition)));
+			addDOCId(position, rdf);
 		}
 		return position;
 	}
